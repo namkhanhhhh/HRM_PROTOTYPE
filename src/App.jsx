@@ -5,6 +5,9 @@ import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import Departments from './pages/Departments';
 import Positions from './pages/Positions';
+import Contracts from './pages/Contracts';
+import EmployeeHistory from './pages/EmployeeHistory';
+import Attendance from './pages/Attendance';
 import { RoleProvider } from './context/RoleContext';
 import './styles/main.css';
 
@@ -15,13 +18,12 @@ function App() {
         <MainLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            {/* Add more routes here for prototype */}
             <Route path="/employees" element={<Employees />} />
             <Route path="/departments" element={<Departments />} />
             <Route path="/positions" element={<Positions />} />
-            <Route path="/contracts" element={<div className="card">Hợp đồng Page Placeholder</div>} />
-            <Route path="/history" element={<div className="card">Lịch sử Page Placeholder</div>} />
-            <Route path="/attendance" element={<Employees />} /> {/* Reusing for demo if needed */}
+            <Route path="/contracts" element={<Contracts />} />
+            <Route path="/history" element={<EmployeeHistory />} />
+            <Route path="/attendance" element={<Attendance />} />
           </Routes>
         </MainLayout>
       </Router>

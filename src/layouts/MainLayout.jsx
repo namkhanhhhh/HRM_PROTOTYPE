@@ -13,6 +13,8 @@ const MainLayout = ({ children }) => {
   const getTitle = () => {
     const path = location.pathname;
     if (path === '/') return 'Dashboard';
+    if (path === '/history') return 'Quản lý Lịch sử Nhân sự';
+    if (path === '/attendance') return 'Quản lý Chấm công';
     return 'Danh sách Nhân viên nội bộ';
   };
 
