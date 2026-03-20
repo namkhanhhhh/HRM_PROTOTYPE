@@ -8,6 +8,8 @@ import Positions from './pages/Positions';
 import Contracts from './pages/Contracts';
 import EmployeeHistory from './pages/EmployeeHistory';
 import Attendance from './pages/Attendance';
+import Leaves from './pages/Leaves';
+import Expenses from './pages/Expenses';
 import { RoleProvider } from './context/RoleContext';
 import './styles/main.css';
 
@@ -24,6 +26,8 @@ function App() {
             <Route path="/contracts" element={<Contracts />} />
             <Route path="/history" element={<EmployeeHistory />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/leaves" element={<Leaves />} />
+            <Route path="/expenses" element={<Expenses />} />
           </Routes>
         </MainLayout>
       </Router>

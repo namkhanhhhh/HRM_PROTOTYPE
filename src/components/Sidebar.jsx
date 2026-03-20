@@ -34,13 +34,13 @@ const Sidebar = () => {
       items: [
         { icon: <Banknote size={18} />, label: 'Bảng lương', path: '/payroll-setup' },
         { icon: <Banknote size={18} />, label: 'Tính lương', path: '/payroll-calc' },
-        { icon: <CreditCard size={18} />, label: 'Quản lý Thu-Chi', path: '/expenses' },
       ]
     },
     {
       section: 'Duyệt & Phê duyệt',
       items: [
         { icon: <CheckSquare size={18} />, label: 'Quản lý nghỉ phép', path: '/leaves' },
+        { icon: <CreditCard size={18} />, label: 'Quản lý duyệt chi phí', path: '/expenses' },
       ]
     }
   ];

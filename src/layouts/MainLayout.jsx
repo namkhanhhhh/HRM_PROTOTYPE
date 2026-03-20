@@ -13,8 +13,13 @@ const MainLayout = ({ children }) => {
   const getTitle = () => {
     const path = location.pathname;
     if (path === '/') return 'Dashboard';
+    if (path === '/positions') return 'Quản lý Chức vụ';
+    if (path === '/departments') return 'Quản lý phòng ban';
+    if (path === '/contracts') return 'Quản lý Hợp đồng Lao động';
     if (path === '/history') return 'Quản lý Lịch sử Nhân sự';
     if (path === '/attendance') return 'Quản lý Chấm công';
+    if (path === '/leaves') return 'Quản lý Nghỉ phép';
+    if (path === '/expenses') return 'Quản lý Duyệt chi phí';
     return 'Danh sách Nhân viên nội bộ';
   };
 
