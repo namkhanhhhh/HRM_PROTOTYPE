@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, AreaChart, Area
 } from 'recharts';
+import PersonalDashboard from './PersonalDashboard';
 
 const StatCard = ({ icon, label, value, trend, subtext, trendType, color }) => (
   <div style={{ 
@@ -168,6 +169,10 @@ const Dashboard = () => {
         </div>
       </div>
     );
+  }
+
+  if (role === 'personal') {
+    return <PersonalDashboard />;
   }
 
   return (

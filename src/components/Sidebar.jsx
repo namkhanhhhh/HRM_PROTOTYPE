@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, Users, Building2, Briefcase, FileText,
   History, Clock, CheckSquare, Banknote, Settings,
-  Bell, User, LogOut, ChevronRight, ShieldCheck, UserCircle, CreditCard
+  Bell, User, LogOut, ChevronRight, ShieldCheck, UserCircle, CreditCard, AlertCircle
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useRole } from '../context/RoleContext';
@@ -41,18 +41,30 @@ const Sidebar = () => {
       items: [
         { icon: <CheckSquare size={18} />, label: 'Quản lý nghỉ phép', path: '/leaves' },
         { icon: <CreditCard size={18} />, label: 'Quản lý duyệt chi phí', path: '/expenses' },
+        { icon: <AlertCircle size={18} />, label: 'Báo cáo Sai sót', path: '/reports' },
       ]
     }
   ];
 
   const personalMenu = [
     {
-      section: 'Cá nhân',
+      section: 'Tổng quan',
       items: [
-        { icon: <LayoutDashboard size={18} />, label: 'Bảng điều khiển', path: '/' },
-        { icon: <User size={18} />, label: 'Hồ sơ của tôi', path: '/profile' },
-        { icon: <Clock size={18} />, label: 'Công của tôi', path: '/my-attendance' },
-        { icon: <CheckSquare size={18} />, label: 'Nghỉ phép của tôi', path: '/my-leaves' },
+        { icon: <LayoutDashboard size={18} />, label: 'Tổng quan thu nhập', path: '/' },
+      ]
+    },
+    {
+      section: 'Lương & Công',
+      items: [
+        { icon: <Banknote size={18} />, label: 'Lương của tôi', path: '/my-salary' },
+        { icon: <Clock size={18} />, label: 'Chi tiết chấm công', path: '/my-attendance' },
+      ]
+    },
+    {
+      section: 'Đơn từ & Phê duyệt',
+      items: [
+        { icon: <CheckSquare size={18} />, label: 'Đơn nghỉ phép', path: '/my-leaves' },
+        { icon: <CreditCard size={18} />, label: 'Đơn xin cấp chi phí', path: '/my-expenses' },
       ]
     }
   ];
@@ -77,15 +89,15 @@ const Sidebar = () => {
           alignItems: 'center',
           gap: '0.75rem',
         }}>
-          <img 
-            src="/tds_img.jpg" 
+          <img
+            src="/tds_img.jpg"
             alt="Logo"
             style={{
               width: '40px',
               height: '40px',
               borderRadius: '8px',
               objectFit: 'cover'
-            }} 
+            }}
           />
           <div style={{ display: 'flex', flexDirection: 'column', color: 'white' }}>
             <span style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em' }}>TD Solutions</span>
@@ -200,19 +212,43 @@ const Sidebar = () => {
           </div>
         </div>
 
-        <div style={{
+        <Link to="/profile" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
-          padding: '0.5rem'
+          padding: '0.75rem',
+          borderRadius: 'var(--radius-lg)',
+          textDecoration: 'none',
+          transition: 'all 0.2s',
+          cursor: 'pointer',
+          background: location.pathname === '/profile' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+          color: 'white',
+          border: '1px solid rgba(255, 255, 255, 0.05)'
         }}>
-          <User size={20} color="#94a3b8" />
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: '700',
+            fontSize: '0.9rem'
+          }}>
+            NK
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'white' }}>
-              Admin Tester
+            <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Nam Khánh
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '500' }}>
+              Quản trị viên
             </div>
           </div>
-        </div>
+          <ChevronRight size={16} color="#475569" />
+        </Link>
       </div>
     </div>
   );
