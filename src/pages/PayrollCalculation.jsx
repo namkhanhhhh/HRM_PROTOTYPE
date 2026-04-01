@@ -14,6 +14,24 @@ const PayrollCalculation = () => {
   // Modal states
   const [detailModalEmp, setDetailModalEmp] = useState(null);
   const [adjModalEmp, setAdjModalEmp] = useState(null);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testEmp, setTestEmp] = useState({
+    name: 'Ứng viên Test (Giả lập)',
+    role: 'Mẫu thử nghiệm',
+    dept: 'Hệ thống',
+    contractType: 'Chính thức',
+    gross: 20000000,
+    workDays: 22,
+    leaveDays: 0,
+    otHours: 0,
+    dependents: 0,
+    manualWorkDays: 0,
+    manualOtHours: 0,
+    bonus: 0,
+    deduction: 0,
+    manualAdj: 0,
+    otherAllowancesList: [],
+  });
 
   // --- PERIODS STATE ---
   const [periods, setPeriods] = useState([
@@ -98,7 +116,6 @@ const PayrollCalculation = () => {
     }
   ]);
 
-  // --- SYSTEM CONFIG (From Setup) ---
   const setupConfig = {
     lunch: 700000,
     gasoline: 500000,
@@ -111,9 +128,11 @@ const PayrollCalculation = () => {
 
   // --- CALCULATION LOGIC ---
   const calculateResult = (emp) => {
-    // 1. LCB (Gross - Fixed Allowances) limit to contract type
+    const extraAllowancesTotal = (emp.otherAllowancesList || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+    // 1. LCB (Gross - Phụ cấp cố định - Phụ cấp khác) limit to contract type
     const fixedAllowances = (emp.contractType === 'Cộng tác viên') ? 0 : setupConfig.lunch + setupConfig.gasoline + setupConfig.phone;
-    let baseSalary = emp.gross - fixedAllowances;
+    let baseSalary = emp.gross - fixedAllowances - extraAllowancesTotal;
     
     // (Diện thử việc sẽ tính 85% số lương vừa ra)
     if (emp.contractType === 'Thử việc') baseSalary = baseSalary * 0.85;
@@ -134,7 +153,15 @@ const PayrollCalculation = () => {
     const allowanceRatio = Math.min(totalActualWorkDays, setupConfig.standardDays) / setupConfig.standardDays;
     const allowanceLunchActual = (emp.contractType === 'Cộng tác viên') ? 0 : setupConfig.lunch * allowanceRatio;
     const allowanceTaxableActual = (emp.contractType === 'Cộng tác viên') ? 0 : (setupConfig.gasoline + setupConfig.phone) * allowanceRatio; 
-    const manualAdjustmentsStr = emp.bonus - emp.deduction + emp.manualAdj;
+    
+    // Tính phần taxable của phụ cấp khác (prorated items)
+    const extraAllowancesTaxableTotal = (emp.otherAllowancesList || []).filter(i => i.isTaxable !== false).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const extraAllowancesTaxableActual = (emp.contractType === 'Cộng tác viên') ? 0 : extraAllowancesTaxableTotal * allowanceRatio;
+
+    // Tính tổng thực nhận phụ cấp khác (cả taxable và non-taxable, theo tỷ lệ công)
+    const extraAllowancesActual = (emp.contractType === 'Cộng tác viên') ? 0 : extraAllowancesTotal * allowanceRatio;
+
+    const manualAdjustmentsStr = emp.bonus - emp.deduction + emp.manualAdj + extraAllowancesActual;
 
     // 6. Tổng nhận trước thuế
     const totalBeforeTax = actualWorkSalary + allowanceLunchActual + allowanceTaxableActual + otSalary + manualAdjustmentsStr;
@@ -146,8 +173,8 @@ const PayrollCalculation = () => {
     // 8. Giảm trừ
     const totalDeduction = setupConfig.personalDeduction + (emp.dependents * setupConfig.dependentDeduction);
 
-    // 9. Tổng TN Chịu thuế (Ăn trưa KHÔNG tính thuế)
-    const finalTaxableBasis = actualWorkSalary + allowanceTaxableActual + otSalary + manualAdjustmentsStr;
+    // 9. Tổng TN Chịu thuế (Khấu trừ OT, PC Ăn trưa, PC không chịu thuế)
+    const finalTaxableBasis = actualWorkSalary + allowanceTaxableActual + emp.bonus - emp.deduction + emp.manualAdj + extraAllowancesTaxableActual;
 
     // 10. TN Tính thuế
     const netTaxableIncome = Math.max(0, finalTaxableBasis - insuranceAmt - totalDeduction);
@@ -155,8 +182,15 @@ const PayrollCalculation = () => {
     // 11. Thuế TNCN
     let pitTax = 0;
     if (emp.contractType === 'Chính thức') {
-      // Progressive mock
-      if (netTaxableIncome > 0) pitTax = netTaxableIncome * 0.1; // simplified progressive
+      if (netTaxableIncome > 0) {
+        if (netTaxableIncome <= 5000000) pitTax = netTaxableIncome * 0.05;
+        else if (netTaxableIncome <= 10000000) pitTax = (netTaxableIncome * 0.1) - 250000;
+        else if (netTaxableIncome <= 18000000) pitTax = (netTaxableIncome * 0.15) - 750000;
+        else if (netTaxableIncome <= 32000000) pitTax = (netTaxableIncome * 0.2) - 1650000;
+        else if (netTaxableIncome <= 52000000) pitTax = (netTaxableIncome * 0.25) - 3250000;
+        else if (netTaxableIncome <= 80000000) pitTax = (netTaxableIncome * 0.3) - 5850000;
+        else pitTax = (netTaxableIncome * 0.35) - 9850000;
+      }
     } else {
       // Fix 10% for Probation/CTV
       pitTax = finalTaxableBasis * 0.1; 
@@ -174,6 +208,8 @@ const PayrollCalculation = () => {
       otSalary,
       allowanceLunch: allowanceLunchActual,
       allowanceTaxable: allowanceTaxableActual,
+      extraAllowancesTotal,
+      extraAllowancesActual,
       manualAdjustmentsStr,
       totalBeforeTax,
       shouldPayInsurance,
@@ -327,6 +363,7 @@ const PayrollCalculation = () => {
              </div>
              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                 <button onClick={createNewPeriod} style={secondaryBtnStyle}><Plus size={18} /> Tạo kỳ lương mới</button>
+                <button onClick={() => setShowTestModal(true)} style={{ ...secondaryBtnStyle, color: '#d97706', borderColor: '#fde68a', background: '#fffbeb' }}><Calculator size={18} /> Giả lập tính lương</button>
                 {!showFormula && <button onClick={() => setShowFormula(true)} style={secondaryBtnStyle}><HelpCircle size={18} /> Guideline</button>}
                 <button 
                   onClick={handleRunCalculation} 
@@ -471,6 +508,104 @@ const PayrollCalculation = () => {
         )}
       </AnimatePresence>
 
+      {/* --- TEST SIMULATION MODAL --- */}
+      <AnimatePresence>
+        {showTestModal && (
+          <div style={modalOverlayStyle}>
+             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} style={modalContentStyle}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                 <h3 style={{ fontSize: '1.25rem', fontWeight: '750' }}>Bộ Giả Lập Tính Lương</h3>
+                 <button onClick={() => setShowTestModal(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={20} /></button>
+               </div>
+               <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                 Công cụ giúp giả lập đầu vào để kiểm tra chuẩn xác công thức thuế, bảo hiểm, và phụ cấp của hệ thống.
+               </p>
+               <form onSubmit={(e) => { 
+                 e.preventDefault(); 
+                 const res = calculateResult(testEmp); 
+                 setDetailModalEmp({ emp: testEmp, result: res }); 
+                 setShowTestModal(false); 
+               }} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <label style={modalLabelStyle}>Lương Gross (VNĐ)</label>
+                      <input type="text" value={testEmp.gross ? new Intl.NumberFormat('vi-VN').format(testEmp.gross) : ''} onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setTestEmp({...testEmp, gross: parseInt(raw) || 0});
+                      }} style={modalInputStyle} required />
+                    </div>
+                    <div>
+                      <label style={modalLabelStyle}>Loại ứng viên/hợp đồng</label>
+                      <select value={testEmp.contractType} onChange={e => setTestEmp({...testEmp, contractType: e.target.value})} style={modalInputStyle}>
+                        <option value="Chính thức">Chính thức</option>
+                        <option value="Thử việc">Thử việc (85%)</option>
+                        <option value="Cộng tác viên">Cộng tác viên (Dịch vụ)</option>
+                      </select>
+                    </div>
+                 </div>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <label style={modalLabelStyle}>Số ngày công thực tế</label>
+                      <input type="number" step="0.5" value={testEmp.workDays} onChange={e => setTestEmp({...testEmp, workDays: parseFloat(e.target.value) || 0})} style={modalInputStyle} required />
+                    </div>
+                    <div>
+                      <label style={modalLabelStyle}>Số giờ OT</label>
+                      <input type="number" step="0.5" value={testEmp.otHours} onChange={e => setTestEmp({...testEmp, otHours: parseFloat(e.target.value) || 0})} style={modalInputStyle} required />
+                    </div>
+                 </div>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <label style={modalLabelStyle}>Các khoản thưởng (VNĐ)</label>
+                      <input type="text" value={testEmp.bonus ? new Intl.NumberFormat('vi-VN').format(testEmp.bonus) : ''} onChange={e => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setTestEmp({...testEmp, bonus: parseInt(raw) || 0});
+                      }} style={modalInputStyle} />
+                    </div>
+                    <div>
+                      <label style={modalLabelStyle}>Số NPT (Giảm trừ gia cảnh)</label>
+                      <input type="number" step="1" value={testEmp.dependents} onChange={e => setTestEmp({...testEmp, dependents: parseInt(e.target.value) || 0})} style={modalInputStyle} />
+                    </div>
+                 </div>
+                 
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ ...modalLabelStyle, marginBottom: 0 }}>Các khoản phụ cấp khác</label>
+                      <button type="button" onClick={() => setTestEmp({...testEmp, otherAllowancesList: [...(testEmp.otherAllowancesList || []), { id: Date.now(), name: '', amount: 0, isTaxable: true }]})} style={{ border: 'none', background: '#dbeafe', color: '#1d4ed8', fontSize: '0.75rem', fontWeight: '700', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer' }}>+ Thêm phụ cấp</button>
+                    </div>
+                    {(testEmp.otherAllowancesList || []).map((item, index) => (
+                      <div key={item.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input type="text" placeholder="Tên PC (VD: Trách nhiệm)" value={item.name} onChange={e => {
+                          const newList = [...testEmp.otherAllowancesList];
+                          newList[index].name = e.target.value;
+                          setTestEmp({...testEmp, otherAllowancesList: newList});
+                        }} style={{ ...modalInputStyle, flex: 1, padding: '8px 10px', fontSize: '0.85rem' }} />
+                        <input type="text" placeholder="Số tiền..." value={item.amount ? new Intl.NumberFormat('vi-VN').format(item.amount) : ''} onChange={e => {
+                          const raw = e.target.value.replace(/\D/g, '');
+                          const newList = [...testEmp.otherAllowancesList];
+                          newList[index].amount = parseInt(raw) || 0;
+                          setTestEmp({...testEmp, otherAllowancesList: newList});
+                        }} style={{ ...modalInputStyle, width: '130px', padding: '8px 10px', fontSize: '0.85rem' }} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
+                          <input type="checkbox" checked={item.isTaxable !== false} onChange={e => {
+                            const newList = [...testEmp.otherAllowancesList];
+                            newList[index].isTaxable = e.target.checked;
+                            setTestEmp({...testEmp, otherAllowancesList: newList});
+                          }} style={{ width: '16px', height: '16px' }} /> Tính thuế
+                        </label>
+                        <button type="button" onClick={() => setTestEmp({...testEmp, otherAllowancesList: testEmp.otherAllowancesList.filter(x => x.id !== item.id)})} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><X size={14} /></button>
+                      </div>
+                    ))}
+                 </div>
+                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                    <button type="button" onClick={() => setShowTestModal(false)} style={secondaryBtnStyle}>Hủy bỏ</button>
+                    <button type="submit" style={primaryBtnStyle}><Calculator size={18} /> Chạy giả lập & Xem kết quả</button>
+                 </div>
+               </form>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* --- DETAILED CALCULATION MODAL --- */}
       <AnimatePresence>
         {detailModalEmp && (
@@ -486,9 +621,9 @@ const PayrollCalculation = () => {
                
                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {/* Step 1 & 2 */}
-                  <DetailRow label="1. Lương Cơ bản (Gross - Phụ cấp cố định)">
+                  <DetailRow label="1. Lương Cơ bản (Gross - Phụ cấp cố định - Phụ cấp khác)">
                     <div>
-                      Công thức: {formatCurrency(detailModalEmp.emp.gross)} - Phụ cấp cố định = <strong style={{ color: '#1e293b' }}>{formatCurrency(detailModalEmp.emp.gross - (detailModalEmp.emp.contractType==='Cộng tác viên'?0:1700000))}</strong>
+                      Công thức: {formatCurrency(detailModalEmp.emp.gross)} - PC cố định - PC khác = <strong style={{ color: '#1e293b' }}>{formatCurrency(detailModalEmp.emp.gross - (detailModalEmp.emp.contractType==='Cộng tác viên'?0:(1700000 + (detailModalEmp.result.extraAllowancesTotal || 0))))}</strong>
                       {detailModalEmp.emp.contractType === 'Thử việc' && (
                         <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '4px' }}>* Nhân viên đang Thử việc, Lương cơ bản áp dụng 85% = <strong style={{color: '#1e293b'}}>{formatCurrency(detailModalEmp.result.baseSalary)}</strong></div>
                       )}
@@ -513,8 +648,18 @@ const PayrollCalculation = () => {
                     </DetailRow>
                     <DetailRow label="4. Thưởng / Phụ cấp thêm">
                       Thưởng: {formatCurrency(detailModalEmp.emp.bonus)} <br/>
-                      Phụ cấp: {formatCurrency(detailModalEmp.result.allowanceLunch + detailModalEmp.result.allowanceTaxable)}
-                      <div style={{color: '#94a3b8', fontSize: '0.8rem', marginTop: '4px', fontWeight: '500'}}>* Phụ cấp trả theo công: (1tr7 / 22) x {detailModalEmp.result.totalActualWorkDays} công</div>
+                      Phụ cấp hệ thống: {formatCurrency(detailModalEmp.result.allowanceLunch + detailModalEmp.result.allowanceTaxable)}
+                      <div style={{color: '#94a3b8', fontSize: '0.8rem', marginTop: '4px', fontWeight: '500'}}>* Phụ cấp mặc định (theo công): (1.7M / 22) x {detailModalEmp.result.totalActualWorkDays} công</div>
+                      {(detailModalEmp.emp.otherAllowancesList?.length > 0) && (
+                        <div style={{ marginTop: '8px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
+                           Phụ cấp khác (thực nhận theo công): <strong>{formatCurrency(detailModalEmp.result.extraAllowancesActual || 0)}</strong>
+                           <ul style={{ margin: '4px 0 0 0', paddingLeft: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
+                             {detailModalEmp.emp.otherAllowancesList.map(allowance => (
+                               <li key={allowance.id}>{allowance.name || 'Phụ cấp khác'}: {formatCurrency(allowance.amount || 0)} {allowance.isTaxable === false ? '(Không tính thuế)' : '(Tính thuế)'}</li>
+                             ))}
+                           </ul>
+                        </div>
+                      )}
                     </DetailRow>
                   </div>
 
@@ -542,7 +687,7 @@ const PayrollCalculation = () => {
                   {/* Step 9..11 Thuế */}
                   <DetailRow label="8. Thuế TNCN">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontSize: '0.85rem' }}>- TN Chịu thuế (Không bao gồm PC Ăn trưa): {formatCurrency(detailModalEmp.result.finalTaxableBasis)}</div>
+                      <div style={{ fontSize: '0.85rem' }}>- TN Chịu thuế (Không bao gồm OT, PC Ăn trưa, PC Không tính thuế): {formatCurrency(detailModalEmp.result.finalTaxableBasis)}</div>
                       <div style={{ fontSize: '0.85rem' }}>- Giảm trừ (Bản thân + {detailModalEmp.emp.dependents} Người phụ thuộc): {formatCurrency(detailModalEmp.result.totalDeduction)}</div>
                       <div style={{ fontSize: '0.85rem' }}>- TN Tính thuế: {formatCurrency(detailModalEmp.result.netTaxableIncome)}</div>
                       <div style={{ padding: '8px', background: '#fef2f2', borderRadius: '8px', marginTop: '4px' }}>

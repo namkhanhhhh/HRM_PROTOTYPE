@@ -1,206 +1,226 @@
-import React from 'react';
-import { 
-  Users, CheckCircle, Timer, Bell, 
-  ArrowUpRight, ArrowDownRight, Trophy, AlertCircle, Building2,
-  DollarSign, PieChart as PieChartIcon, TrendingUp, Clock, Calendar
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRole } from '../context/RoleContext';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, AreaChart, Area
-} from 'recharts';
-import PersonalDashboard from './PersonalDashboard';
+import {
+  Users, Clock, CheckSquare, Banknote, UserCircle, Settings,
+  LayoutDashboard, AlertCircle, ChevronLeft, ChevronRight, TrendingUp, PieChart
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const StatCard = ({ icon, label, value, trend, subtext, trendType, color }) => (
-  <div style={{ 
-    padding: '1.75rem', 
-    background: '#ffffff',
-    border: '1px solid #eef2f6', 
-    borderRadius: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-    transition: 'all 0.3s'
-  }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ 
-        width: '46px', height: '46px', borderRadius: '12px', background: `${color}10`, 
-        display: 'flex', alignItems: 'center', justifyContent: 'center', color: color
-      }}>
-        {React.cloneElement(icon, { size: 24 })}
-      </div>
-      {trend && (
-        <span style={{ 
-          display: 'flex', alignItems: 'center', gap: '4px',
-          color: trendType === 'up' ? '#10b981' : '#ef4444', 
-          fontWeight: '500', fontSize: '0.85rem',
-          background: trendType === 'up' ? '#ecfdf5' : '#fef2f2',
-          padding: '4px 10px', borderRadius: '20px'
-        }}>
-          {trendType === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {trend}
-        </span>
-      )}
-    </div>
-    <div>
-      <div style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: '500', marginBottom: '4px' }}>{label}</div>
-      <div style={{ fontSize: '1.85rem', fontWeight: '600', color: '#1e293b' }}>{value}</div>
-      {subtext && <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: '400' }}>{subtext}</div>}
-    </div>
-  </div>
-);
-
-const employeeSalaryData = [
-  { month: 'Th1', nv: 100, salary: 1.2 },
-  { month: 'Th2', nv: 110, salary: 1.3 },
-  { month: 'Th3', nv: 124, salary: 1.5 },
-  { month: 'Th4', nv: 125, salary: 1.55 },
-  { month: 'Th5', nv: 130, salary: 1.6 },
-  { month: 'Th6', nv: 140, salary: 1.8 }
-];
-
-const Dashboard = () => {
-  const { role } = useRole();
-
-  if (role === 'admin') {
-    return (
-      <div className="flex flex-col" style={{ gap: '2rem' }}>
-        {/* Statistics Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
-          <StatCard 
-            icon={<Users />} label="Tổng nhân sự" value="124" 
-            trend="+12%" trendType="up" subtext="Hợp đồng đang có hiệu lực" color="#3b82f6"
-          />
-          <StatCard 
-            icon={<CheckCircle />} label="Chấm công hôm nay" value="118/124" 
-            trend="95%" trendType="up" subtext="Tỷ lệ chuyên cần thực tế" color="#10b981"
-          />
-          <StatCard 
-            icon={<Timer />} label="Tổng giờ OT" value="45.5h" 
-            trend="+8%" trendType="up" subtext="Ghi nhận trong tháng này" color="#f59e0b"
-          />
-          <StatCard 
-            icon={<AlertCircle />} label="Yêu cầu cần duyệt" value="16" 
-            subtext="Gồm: Nghỉ phép, Chi phí, OT" color="#ef4444"
-          />
-        </div>
-
-        {/* Chart Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr', gap: '2rem' }}>
-          <div style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '600', color: '#1e293b' }}>Biến động nhân sự & Quỹ lương</h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '400' }}>Biểu đồ tăng trưởng theo 6 tháng gần nhất</p>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></div> Nhân viên</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#60a5fa' }}></div> Lương cơ bản</span>
-              </div>
-            </div>
-            <div style={{ height: '320px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={employeeSalaryData}>
-                  <defs>
-                    <linearGradient id="colorNv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }} />
-                  <Area type="monotone" dataKey="nv" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorNv)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: '16px', padding: '1.5rem', flex: 1 }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#1e293b', marginBottom: '1.25rem' }}>Sắp tới & Sự kiện</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {[
-                  { icon: <Calendar size={18} />, title: 'Review lương T7', date: '25/06', color: '#3b82f6' },
-                  { icon: <Clock size={18} />, title: 'Họp Manager', date: 'Mùng 1', color: '#8b5cf6' },
-                  { icon: <Users size={18} />, title: 'Team Building', date: '20/07', color: '#10b981' }
-                ].map((ev, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '10px', borderRadius: '10px', background: '#f8fafc' }}>
-                    <div style={{ color: ev.color }}>{ev.icon}</div>
-                    <div style={{ flex: 1, fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>{ev.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{ev.date}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', borderRadius: '16px', padding: '1.5rem', color: 'white' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <Trophy size={18} color="#fbbf24" />
-                <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>Top Performer tháng 06</span>
-              </div>
-              <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: '1.5' }}>Ghi nhận <strong>Nguyễn Nam Khánh</strong> đạt thành tích vượt 120% KPI trong quý 2.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Lists Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem' }}>
-          <ListCard title="Thông báo mới nhất" color="#ef4444" 
-            items={[
-              { label: 'Quy định làm việc xa mới', sub: 'Cập nhật từ 01/07/2026', time: '2h ago' },
-              { label: 'Thông báo đóng BHXH', sub: 'Kỳ tháng 05/2026', time: '5h ago' }
-            ]} 
-          />
-          <ListCard title="Nhân viên OT nhiều" color="#f59e0b" 
-            items={[
-              { label: 'Lê Văn Hoàng', sub: 'Phòng Kỹ thuật', val: '42.5h' },
-              { icon: 'time', label: 'Phạm Minh Đức', sub: 'Phòng Dự án', val: '38.0h' }
-            ]} 
-          />
-          <ListCard title="Hợp đồng sắp hết hạn" color="#3b82f6" 
-            items={[
-              { label: 'Trần Thị Thu Thảo', sub: 'Hợp đồng 12 tháng', val: '15 ngày' },
-              { label: 'Nguyễn Văn A', sub: 'Thử việc', val: '3 ngày' }
-            ]} 
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (role === 'personal') {
-    return <PersonalDashboard />;
-  }
-
+const ModuleCard = ({ icon, label, subtext, path, colorFrom, colorTo, accent, index }) => {
+  const navigate = useNavigate();
   return (
-    <div style={{ padding: '2rem', background: '#ffffff', borderRadius: '16px', border: '1px solid #eef2f6' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: '600' }}>Giao diện Cá nhân</h2>
-      <p style={{ color: '#64748b', marginTop: '8px' }}>Dữ liệu cá nhân của bạn đang được đồng bộ hóa hệ thống.</p>
-    </div>
+    <motion.button
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+      onClick={() => navigate(path)}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '1.25rem',
+        width: '100%',
+        height: '200px',
+        background: '#ffffff',
+        borderRadius: '24px',
+        border: '1px solid #f1f5f9',
+        color: '#1e293b',
+        cursor: 'pointer',
+        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        padding: '2rem',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.transform = 'translateY(-6px)';
+        e.currentTarget.style.boxShadow = `0 20px 40px -10px ${accent}40`;
+        e.currentTarget.style.borderColor = accent;
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 10px 40px -10px rgba(0,0,0,0.05)';
+        e.currentTarget.style.borderColor = '#f1f5f9';
+      }}
+    >
+      <div style={{
+         position: 'absolute',
+         top: '-40%',
+         right: '-20%',
+         width: '180px',
+         height: '180px',
+         background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
+         filter: 'blur(50px)',
+         opacity: 0.15,
+         borderRadius: '50%',
+         zIndex: 0,
+         pointerEvents: 'none'
+      }} />
+      
+      <div style={{
+        width: '64px',
+        height: '64px',
+        borderRadius: '20px',
+        background: `linear-gradient(135deg, ${colorFrom}, ${colorTo})`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        boxShadow: `0 8px 16px -4px ${accent}60`,
+        zIndex: 1
+      }}>
+        {icon}
+      </div>
+      <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center' }}>
+        <div style={{ fontWeight: '700', fontSize: '1.15rem', letterSpacing: '-0.3px', color: '#1e293b' }}>{label}</div>
+        <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>{subtext}</div>
+      </div>
+    </motion.button>
   );
 };
 
-const ListCard = ({ title, items, color }) => (
-  <div style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-    <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#1e293b', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{ width: '4px', height: '16px', borderRadius: '10px', background: color }}></div>
-      {title}
-    </h3>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center justify-between">
-          <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: '500', color: '#334155' }}>{item.label}</div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.sub}</div>
-          </div>
-          <div style={{ fontSize: '0.85rem', fontWeight: '600', color: color }}>{item.val || item.time}</div>
+const Dashboard = () => {
+  const { role } = useRole();
+  const [page, setPage] = useState(0);
+
+  const adminModules = [
+    { label: 'Dashboard Tổng quan', subtext: 'Báo cáo & thống kê', path: '/admin-overview', icon: <LayoutDashboard size={28} strokeWidth={2.5} />, cFrom: '#c084fc', cTo: '#9333ea', accent: '#a855f7' },
+    { label: 'Quản lý Nhân sự', subtext: 'Hồ sơ, phòng ban & HDLD', path: '/employees', icon: <Users size={28} strokeWidth={2.5} />, cFrom: '#60a5fa', cTo: '#2563eb', accent: '#3b82f6' },
+    { label: 'Quản lý Chấm công', subtext: 'Theo dõi giờ làm việc', path: '/attendance', icon: <Clock size={28} strokeWidth={2.5} />, cFrom: '#34d399', cTo: '#059669', accent: '#10b981' },
+    { label: 'Đơn từ & Phê duyệt', subtext: 'Nghỉ phép, duyệt chi', path: '/leaves', icon: <CheckSquare size={28} strokeWidth={2.5} />, cFrom: '#fb923c', cTo: '#ea580c', accent: '#f97316' },
+    { label: 'Quản lý Lương', subtext: 'Bảng lương & tính toán', path: '/payroll-calc', icon: <Banknote size={28} strokeWidth={2.5} />, cFrom: '#a78bfa', cTo: '#7c3aed', accent: '#8b5cf6' },
+    { label: 'Thông tin cá nhân', subtext: 'Hồ sơ tài khoản', path: '/profile', icon: <UserCircle size={28} strokeWidth={2.5} />, cFrom: '#fb7185', cTo: '#e11d48', accent: '#f43f5e' },
+    { label: 'Cấu hình Hệ thống', subtext: 'Phân quyền & cài đặt', path: '/settings', icon: <Settings size={28} strokeWidth={2.5} />, cFrom: '#94a3b8', cTo: '#475569', accent: '#64748b' },
+  ];
+
+  const employeeModules = [
+    { label: 'Dashboard Tổng quan', subtext: 'Báo cáo thu nhập & KPIs', path: '/personal-overview', icon: <LayoutDashboard size={28} strokeWidth={2.5} />, cFrom: '#818cf8', cTo: '#4f46e5', accent: '#6366f1' },
+    { label: 'Lương của tôi', subtext: 'Phiếu lương chi tiết', path: '/my-salary', icon: <Banknote size={28} strokeWidth={2.5} />, cFrom: '#a78bfa', cTo: '#7c3aed', accent: '#8b5cf6' },
+    { label: 'Lịch sử Chấm công', subtext: 'Theo dõi điểm danh', path: '/my-attendance', icon: <Clock size={28} strokeWidth={2.5} />, cFrom: '#34d399', cTo: '#059669', accent: '#10b981' },
+    { label: 'Đơn từ & Phê duyệt', subtext: 'Xin nghỉ, xin cấp chi phí', path: '/my-leaves', icon: <CheckSquare size={28} strokeWidth={2.5} />, cFrom: '#fb923c', cTo: '#ea580c', accent: '#f97316' },
+    { label: 'Thông tin cá nhân', subtext: 'Cập nhật tài khoản', path: '/profile', icon: <UserCircle size={28} strokeWidth={2.5} />, cFrom: '#fb7185', cTo: '#e11d48', accent: '#f43f5e' },
+    { label: 'Trao đổi & Báo cáo', subtext: 'Gửi phản hồi sai sót', path: '/reports', icon: <AlertCircle size={28} strokeWidth={2.5} />, cFrom: '#38bdf8', cTo: '#0284c7', accent: '#0ea5e9' },
+  ];
+
+  const modules = role === 'admin' ? adminModules : employeeModules;
+  const pageSize = 6;
+  const totalPages = Math.ceil(modules.length / pageSize);
+  
+  const currentModules = modules.slice(page * pageSize, (page + 1) * pageSize);
+
+  const slideVariants = {
+    enter: (direction) => ({ x: direction > 0 ? 800 : -800, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (direction) => ({ x: direction > 0 ? -800 : 800, opacity: 0 })
+  };
+
+  const handleDragEnd = (e, { offset, velocity }) => {
+    const swipeDistance = offset.x;
+    if (swipeDistance < -60 && page < totalPages - 1) {
+      setPage(page + 1);
+    } else if (swipeDistance > 60 && page > 0) {
+      setPage(page - 1);
+    }
+  };
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      alignItems: 'center', 
+      minHeight: 'calc(100vh - 100px)',
+      background: '#f8fafc',
+      paddingTop: '3rem',
+      overflow: 'hidden'
+    }}>
+      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-1px', marginBottom: '8px' }}>
+          Chào mừng đến với TD Solutions
+        </h1>
+        <p style={{ fontSize: '1.1rem', color: '#64748b', fontWeight: '400' }}>
+          Luôn đồng hành cùng sự phát triển của bạn
+        </p>
+      </div>
+
+      <div style={{ position: 'relative', width: '100%', maxWidth: '1000px', padding: '0 2rem' }}>
+        
+        {totalPages > 1 && page > 0 && (
+          <button onClick={() => setPage(page - 1)} style={{ position: 'absolute', left: '-2rem', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', color: '#64748b', transition: 'all 0.2s' }}>
+            <ChevronLeft size={24} />
+          </button>
+        )}
+
+        <div style={{ overflow: 'hidden', padding: '1rem 0 2rem', minHeight: '488px' }}>
+          <AnimatePresence mode="wait" custom={page}>
+            <motion.div
+              key={page}
+              custom={page}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.4, type: 'spring', bounce: 0.1 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={handleDragEnd}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '2.5rem',
+                width: '100%',
+                cursor: 'grab'
+              }}
+              whileTap={{ cursor: 'grabbing' }}
+            >
+              {currentModules.map((mod, idx) => (
+                <ModuleCard
+                  key={mod.path}
+                  index={idx}
+                  icon={mod.icon}
+                  label={mod.label}
+                  subtext={mod.subtext}
+                  path={mod.path}
+                  colorFrom={mod.cFrom}
+                  colorTo={mod.cTo}
+                  accent={mod.accent}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      ))}
+
+        {totalPages > 1 && page < totalPages - 1 && (
+          <button onClick={() => setPage(page + 1)} style={{ position: 'absolute', right: '-2rem', top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', color: '#64748b', transition: 'all 0.2s' }}>
+            <ChevronRight size={24} />
+          </button>
+        )}
+
+      </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setPage(i)}
+              style={{
+                width: i === page ? '24px' : '8px',
+                height: '8px',
+                borderRadius: '8px',
+                background: i === page ? '#3b82f6' : '#cbd5e1',
+                border: 'none',
+                transition: 'all 0.3s',
+                cursor: 'pointer'
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default Dashboard;
