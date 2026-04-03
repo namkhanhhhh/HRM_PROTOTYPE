@@ -12,10 +12,10 @@ import {
 /* ─── helpers ─── */
 function getStatusColor(s) {
   switch (s) {
-    case 'Đã sửa':     return '#10b981';
+    case 'Đã sửa': return '#10b981';
     case 'Đang xử lý': return '#3b82f6';
-    case 'Từ chối':    return '#ef4444';
-    default:            return '#f59e0b';
+    case 'Từ chối': return '#ef4444';
+    default: return '#f59e0b';
   }
 }
 
@@ -31,8 +31,8 @@ const MainLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [showProfileMenu,      setShowProfileMenu]      = useState(false);
-  const [showNotifPanel,       setShowNotifPanel]        = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const notifRef = useRef(null);
 
   // close notification panel on outside click
@@ -44,27 +44,27 @@ const MainLayout = ({ children }) => {
 
   const getTitle = () => {
     const path = location.pathname;
-    if (path === '/')               return 'Dashboard';
-    if (path === '/positions')      return 'Quản lý Chức vụ';
-    if (path === '/departments')    return 'Quản lý phòng ban';
-    if (path === '/contracts')      return 'Quản lý Hợp đồng Lao động';
-    if (path === '/history')        return 'Quản lý Lịch sử Nhân sự';
-    if (path === '/attendance')     return 'Dữ liệu Chấm công';
-    if (path === '/attendance-ot')  return 'Theo dõi Tăng ca (OT)';
+    if (path === '/') return 'Dashboard';
+    if (path === '/positions') return 'Quản lý Chức vụ';
+    if (path === '/departments') return 'Quản lý phòng ban';
+    if (path === '/contracts') return 'Quản lý Hợp đồng Lao động';
+    if (path === '/history') return 'Quản lý Lịch sử Nhân sự';
+    if (path === '/attendance') return 'Dữ liệu Chấm công';
+    if (path === '/attendance-ot') return 'Theo dõi Tăng ca (OT)';
     if (path === '/attendance-violations') return 'Thống kê Đi muộn/Về sớm';
     if (path === '/attendance-reconciliation') return 'Đối soát Công & Phép';
-    if (path === '/leaves')         return 'Quản lý Nghỉ phép';
-    if (path === '/expenses')       return 'Quản lý Duyệt chi phí';
-    if (path === '/payroll-setup')  return 'Thiết lập chỉ số Lương';
-    if (path === '/payroll-calc')   return 'Tính toán Bảng lương';
-    if (path === '/reports')        return 'Quản lý Báo cáo Sai sót';
-    if (path === '/profile')        return 'Thông tin Hồ sơ cá nhân';
-    if (path === '/settings')       return 'Cấu hình Hệ thống';
-    if (path === '/security')       return 'Bảo mật & Mật khẩu';
-    if (path === '/my-salary')      return 'Bảng lương chi tiết';
-    if (path === '/my-attendance')  return 'Chi tiết Lịch sử Chấm công';
-    if (path === '/my-leaves')      return 'Quản lý Đơn nghỉ phép';
-    if (path === '/my-expenses')    return 'Quản lý Đơn cấp Chi phí';
+    if (path === '/leaves') return 'Quản lý Nghỉ phép';
+    if (path === '/expenses') return 'Quản lý Duyệt chi phí';
+    if (path === '/payroll-setup') return 'Thiết lập chỉ số Lương';
+    if (path === '/payroll-calc') return 'Tính toán Bảng lương';
+    if (path === '/reports') return 'Quản lý Báo cáo Sai sót';
+    if (path === '/profile') return 'Thông tin Hồ sơ cá nhân';
+    if (path === '/settings') return 'Cấu hình Hệ thống';
+    if (path === '/security') return 'Bảo mật & Mật khẩu';
+    if (path === '/my-salary') return 'Bảng lương chi tiết';
+    if (path === '/my-attendance') return 'Chi tiết Lịch sử Chấm công';
+    if (path === '/my-leaves') return 'Quản lý Đơn nghỉ phép';
+    if (path === '/my-expenses') return 'Quản lý Đơn cấp Chi phí';
     if (path === '/personal-overview' || path === '/admin-overview') return 'Dashboard tổng quan';
     if (path === '/hr-analytics') return 'Báo cáo Phân tích Nhân sự';
     if (path === '/finance-analytics') return 'Góc nhìn Phân bổ Quỹ lương & Chi phí';
@@ -85,17 +85,17 @@ const MainLayout = ({ children }) => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'hidden' }}>
 
         {/* ── HEADER ── */}
-        <header style={{ 
-          height: isPlatformHome ? '80px' : '70px', 
-          padding: '0 3rem', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          background: isPlatformHome ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : 'rgba(255,255,255,0.85)', 
-          backdropFilter: isPlatformHome ? 'none' : 'blur(12px)', 
-          borderBottom: isPlatformHome ? 'none' : '1px solid rgba(226,232,240,0.8)', 
-          position: 'sticky', 
-          top: 0, 
+        <header style={{
+          height: isPlatformHome ? '80px' : '70px',
+          padding: '0 3rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: isPlatformHome ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : 'rgba(255,255,255,0.85)',
+          backdropFilter: isPlatformHome ? 'none' : 'blur(12px)',
+          borderBottom: isPlatformHome ? 'none' : '1px solid rgba(226,232,240,0.8)',
+          position: 'sticky',
+          top: 0,
           zIndex: 100,
           boxShadow: isPlatformHome ? '0 4px 20px rgba(0,0,0,0.1)' : 'none'
         }}>
@@ -124,9 +124,9 @@ const MainLayout = ({ children }) => {
               <button
                 onClick={() => setRole('admin')}
                 style={{
-                  padding: '8px 24px', borderRadius: '10px', border: 'none', 
-                  background: role === 'admin' ? '#ffffff' : 'transparent', 
-                  color: role === 'admin' ? '#0f172a' : '#94a3b8', 
+                  padding: '8px 24px', borderRadius: '10px', border: 'none',
+                  background: role === 'admin' ? '#ffffff' : 'transparent',
+                  color: role === 'admin' ? '#0f172a' : '#94a3b8',
                   fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s',
                   boxShadow: role === 'admin' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
                   display: 'flex', alignItems: 'center', gap: '8px'
@@ -137,9 +137,9 @@ const MainLayout = ({ children }) => {
               <button
                 onClick={() => setRole('personal')}
                 style={{
-                  padding: '8px 24px', borderRadius: '10px', border: 'none', 
-                  background: role === 'personal' ? '#ffffff' : 'transparent', 
-                  color: role === 'personal' ? '#0f172a' : '#94a3b8', 
+                  padding: '8px 24px', borderRadius: '10px', border: 'none',
+                  background: role === 'personal' ? '#ffffff' : 'transparent',
+                  color: role === 'personal' ? '#0f172a' : '#94a3b8',
                   fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s',
                   boxShadow: role === 'personal' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
                   display: 'flex', alignItems: 'center', gap: '8px'
@@ -151,9 +151,9 @@ const MainLayout = ({ children }) => {
           )}
 
           {/* Right actions */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
             gap: '1.25rem',
           }}>
 
@@ -250,7 +250,7 @@ const MainLayout = ({ children }) => {
                 {isPlatformHome && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ height: '24px', width: '1px', background: '#e2e8f0', marginRight: '1rem' }} />
-                   </div>
+                  </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {!isPlatformHome ? (
