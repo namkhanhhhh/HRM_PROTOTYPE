@@ -32,20 +32,18 @@ const generateMonthlyDetail = (empId, year, month) => {
 
     if (dayOfWeek === 0) continue; // Skip Sundays
 
-    let status = 'Đủ công';
-    let checkIn = '08:15';
-    let checkOut = '17:45';
-    let lateMins = 0;
-    let earlyMins = 0;
-    let workedHours = 9.5;
-    let workDay = 1.05;
+    let checkIn = '08:30';
+    let checkOut = '17:30';
 
-    if (i % 7 === 0) { status = 'Nửa ngày'; checkOut = '12:00'; workedHours = 4; workDay = 0.5; }
-    else if (i === 12) { status = 'Lỗi chấm công'; checkOut = '--:--'; workedHours = 0; workDay = 0; }
-    else if (i === 15) { status = 'Nghỉ có phép'; checkIn = '--:--'; checkOut = '--:--'; workedHours = 0; workDay = 0; }
-    else if (i === 18) { status = 'Nghỉ không phép'; checkIn = '--:--'; checkOut = '--:--'; workedHours = 0; workDay = 0; }
-    else if (i === 22) { status = 'Đủ công'; checkIn = '08:45'; lateMins = 15; workedHours = 8.5; workDay = 0.95; }
+    if (i % 7 === 0) { checkOut = '12:00'; } // Nửa ngày
+    else if (i === 12) { checkIn = '--:--'; checkOut = '--:--'; } // Lỗi
+    else if (i === 15) { checkIn = '--:--'; checkOut = '--:--'; } // Nghỉ có phép
+    else if (i === 18) { checkIn = '--:--'; checkOut = '--:--'; } // Nghỉ không phép
+    else if (i === 22) { checkIn = '09:00'; checkOut = '17:30'; } // Đi muộn, thiếu công
+    else if (i === 23) { checkIn = '09:00'; checkOut = '18:00'; } // Đi muộn, có bù giờ
+    else if (i === 24) { checkIn = '08:30'; checkOut = '12:30'; } // Part time nửa ngày cần duyệt
 
+    // Notice we defer calculateAttendance below!
     days.push({
       date: dateStr,
       dayName,
@@ -53,21 +51,18 @@ const generateMonthlyDetail = (empId, year, month) => {
       dayOfWeek,
       checkIn,
       checkOut,
-      lateMins,
-      earlyMins,
-      workedHours,
-      workDay,
-      status,
-      otHours: (status === 'Đủ công' && i % 3 === 0) ? 1.5 : 0
     });
   }
+  
+  // Calculate stats using calculateAttendance after it has been defined...
+  // Wait, if it's called outside generation, we must do it later!
   return days;
 };
 
 /* ── HELPERS ── */
-const calculateAttendance = (checkIn, checkOut) => {
+const calculateAttendance = (checkIn, checkOut, approvalStatus = null) => {
   if (!checkIn || !checkOut || checkIn === '--:--' || checkOut === '--:--') 
-     return { hours: 0, workDay: 0, late: 0, early: 0, ot: 0, status: 'Lỗi chấm công' };
+     return { hours: 0, workDay: 0, late: 0, early: 0, ot: 0, status: 'Lỗi chấm công', needApproval: false };
   
   const parseTime = (t) => {
     const [h, m] = t.split(':').map(Number);
@@ -76,25 +71,71 @@ const calculateAttendance = (checkIn, checkOut) => {
 
   const start = parseTime(checkIn);
   const end = parseTime(checkOut);
-  const stdStart = parseTime('08:30');
-  const stdEnd = parseTime('17:30');
-  const lunchMins = 60;
+  
+  const stdStart = 510; // 08:30
+  const stdEnd = 1050; // 17:30
+  const lunchStart = 720; // 12:00
+  const lunchEnd = 780; // 13:00
 
   const late = Math.max(0, start - stdStart);
-  const early = Math.max(0, stdEnd - end);
-  const totalMins = end - start - lunchMins;
-  let hours = totalMins / 60;
-  if(hours < 0) hours = 0;
+  const startEff = Math.max(start, stdStart);
   
-  const workDay = Number((hours / 9).toFixed(2));
-  const ot = Math.max(0, (end - stdEnd) / 60);
-
+  let morningMins = 0;
+  if (startEff < lunchStart) {
+    morningMins = Math.max(0, Math.min(end, lunchStart) - startEff);
+  }
+  
+  let afternoonMins = 0;
+  if (end > lunchEnd) {
+    afternoonMins = Math.max(0, end - Math.max(start, lunchEnd));
+  }
+  
+  const totalWorkedMins = morningMins + afternoonMins;
+  let hours = totalWorkedMins / 60;
+  let workDay = totalWorkedMins / 480;
+  let needApproval = false;
+  
+  if (totalWorkedMins >= 480) {
+    workDay = 1.0;
+  } else if (totalWorkedMins === 210 && startEff === 510 && end === 720) {
+    workDay = 0.45;
+  } else if (totalWorkedMins === 270 && startEff === 780 && end === 1050) {
+    workDay = 0.55;
+  }
+  
+  if (startEff <= 510 && end >= 750 && end <= 780 && afternoonMins === 0) {
+    if (morningMins >= 210) {
+      if (approvalStatus === 'approved') {
+        workDay = 0.5;
+        needApproval = false;
+      } else if (approvalStatus === 'rejected') {
+        workDay = 0.45;
+        needApproval = false;
+      } else {
+        workDay = 0.5;
+        needApproval = true;
+      }
+    }
+  }
+  
+  const ot = Math.max(0, totalWorkedMins - 480) / 60;
+  const earlyMins = Math.max(0, stdEnd - end); 
+  
   let status = 'Đủ công';
   if (workDay >= 1) status = 'Đủ công';
-  else if (workDay >= 0.5) status = 'Nửa ngày';
+  else if (workDay >= 0.5 && !needApproval) status = 'Nửa ngày';
+  else if (workDay > 0) status = 'Thiếu công';
   else status = 'Lỗi chấm công';
-
-  return { hours: hours.toFixed(1), workDay, late, early, ot: ot.toFixed(1), status };
+  
+  return { 
+    hours: Number(hours.toFixed(1)), 
+    workDay: Number(workDay.toFixed(2)), 
+    late, 
+    early: earlyMins, 
+    ot: Number(ot.toFixed(1)), 
+    status, 
+    needApproval 
+  };
 };
 
 /* ── COMPONENTS ── */
@@ -104,6 +145,7 @@ const StatusBadge = ({ status }) => {
     'Đủ công': { bg: '#ecfdf5', color: '#059669', dot: '#10b981' },
     'Đi làm': { bg: '#ecfdf5', color: '#059669', dot: '#10b981' }, 
     'Nửa ngày': { bg: '#fefce8', color: '#a16207', dot: '#eab308' },
+    'Thiếu công': { bg: '#fefce8', color: '#a16207', dot: '#eab308' },
     'Lỗi chấm công': { bg: '#fef2f2', color: '#ef4444', dot: '#f87171' },
     'Nghỉ không phép': { bg: '#f1f5f9', color: '#475569', dot: '#94a3b8' },
     'Nghỉ có phép': { bg: '#ffedd5', color: '#9a3412', dot: '#c2410c' },
@@ -260,7 +302,7 @@ const AddAttendanceDrawer = ({ onClose, onSave }) => {
   );
 };
 
-const CalendarPopup = ({ data, year, month, onClose }) => {
+const CalendarPopup = ({ data, year, month, onClose, onApprove }) => {
   const [selectedDay, setSelectedDay] = useState(null);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay(); 
@@ -315,8 +357,13 @@ const CalendarPopup = ({ data, year, month, onClose }) => {
                        cursor: 'pointer', transition: 'all 0.2s',
                        boxShadow: isSelected ? '0 10px 15px -3px rgba(0,0,0,0.1)' : 'none'
                      }}>
-                     <span style={{ fontSize: '1rem', fontWeight: '600', color: isSelected ? color : (record ? '#1e293b' : '#94a3b8') }}>{dayNum}</span>
+                     <span style={{ fontSize: '1rem', fontWeight: '600', color: isSelected ? color : (record ? (record.needApproval ? '#ea580c' : '#1e293b') : '#94a3b8') }}>{dayNum}</span>
                      {record && <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, marginTop: 4 }} />}
+                     {record?.needApproval && (
+                        <div style={{ position: 'absolute', top: -5, right: -5, background: '#ea580c', color: 'white', borderRadius: '50%', padding: '3px', boxShadow: '0 2px 4px rgba(234,88,12,0.3)' }} title="Cần duyệt 0.5">
+                           <AlertCircle size={10} strokeWidth={3} />
+                        </div>
+                     )}
                    </div>
                  );
               })}
@@ -372,6 +419,21 @@ const CalendarPopup = ({ data, year, month, onClose }) => {
                    </div>
                    <div style={{ pt: 8 }}>
                       <StatusBadge status={selectedDay.status} />
+                      {selectedDay.needApproval && (
+                        <div style={{ marginTop: '12px', background: '#fff7ed', padding: '10px 12px', borderRadius: '10px', border: '1px solid #fed7aa', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', color: '#9a3412', boxShadow: '0 2px 4px rgba(234,88,12,0.05)' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <AlertCircle size={16} style={{ marginTop: 2, flexShrink: 0 }} strokeWidth={2.5}/>
+                            <div>
+                              <strong style={{ display: 'block', marginBottom: 2, fontSize: '0.85rem' }}>Đề xuất duyệt 0.5 công</strong>
+                              Nhân sự làm part-time quá 12:30. Kế toán cần xem xét tính hợp lệ.
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button onClick={() => onApprove(selectedDay.date, 'approved')} style={{ flex: 1, padding: '6px', borderRadius: '6px', background: '#ea580c', color: 'white', border: 'none', fontWeight: '600', cursor: 'pointer', transition: '0.2s' }}>Duyệt 0.5</button>
+                            <button onClick={() => onApprove(selectedDay.date, 'rejected')} style={{ flex: 1, padding: '6px', borderRadius: '6px', background: '#ffedd5', color: '#9a3412', border: 'none', fontWeight: '500', cursor: 'pointer', transition: '0.2s' }}>Về thực tế</button>
+                          </div>
+                        </div>
+                      )}
                    </div>
                 </div>
               </motion.div>
@@ -400,11 +462,19 @@ const Attendance = () => {
   const [isSecretOpen, setIsSecretOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  const [approvals, setApprovals] = useState({});
 
   const handleEdit = () => {
     const diff = (currentYear - fYear) * 12 + (currentMonth - fMonth);
     if (diff > 2) setIsSecretOpen(true);
     else setIsAddOpen(true);
+  };
+  
+  const handleApprove = (date, status) => {
+    if (!selectedEmp) return;
+    const key = `${selectedEmp.id}-${date}`;
+    setApprovals(prev => ({ ...prev, [key]: status }));
   };
 
   const overviewData = useMemo(() => {
@@ -420,8 +490,25 @@ const Attendance = () => {
 
   const detailData = useMemo(() => {
     if (!selectedEmp) return [];
-    return generateMonthlyDetail(selectedEmp.id, fYear, fMonth);
-  }, [selectedEmp, fYear, fMonth]);
+    let _days = generateMonthlyDetail(selectedEmp.id, fYear, fMonth);
+    return _days.map(d => {
+      const approvalStatus = approvals[`${selectedEmp.id}-${d.date}`];
+      const att = calculateAttendance(d.checkIn, d.checkOut, approvalStatus);
+      let status = att.status;
+      if (d.dayNumber === 15) status = 'Nghỉ có phép';
+      if (d.dayNumber === 18) status = 'Nghỉ không phép';
+      return {
+        ...d,
+        lateMins: att.late,
+        earlyMins: att.early,
+        workedHours: att.hours,
+        workDay: (status === 'Nghỉ có phép' || status === 'Nghỉ không phép') ? 0 : att.workDay,
+        status,
+        otHours: att.ot,
+        needApproval: att.needApproval
+      };
+    });
+  }, [selectedEmp, fYear, fMonth, approvals]);
 
   const stats = useMemo(() => {
     let totalH = 0, totalW = 0, totalOT = 0, lateCounts = 0, earlyCounts = 0, lateM = 0, earlyM = 0;
@@ -496,15 +583,29 @@ const Attendance = () => {
       </div>
 
       {viewMode === 'detail' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px' }}>
-           <StatCard label="Tổng giờ làm" value={`${stats.totalH}h`} color="#3b82f6" bgColor="#eff6ff" />
-           <StatCard label="Tổng công" value={stats.totalW} color="#10b981" bgColor="#ecfdf5" />
-           <StatCard label="Tăng ca" value={`${stats.totalOT}h`} color="#8b5cf6" bgColor="#f5f3ff" />
-           <StatCard label="Số lần đi trễ" value={`${stats.lateCounts}`} color="#ef4444" bgColor="#fef2f2" />
-           <StatCard label="Số lần về sớm" value={`${stats.earlyCounts}`} color="#eab308" bgColor="#fefce8" />
-           <StatCard label="Tổng phút trễ" value={`${stats.lateM}p`} color="#ef4444" bgColor="#fef2f2" />
-           <StatCard label="Tổng phút sớm" value={`${stats.earlyM}p`} color="#eab308" bgColor="#fefce8" />
-        </motion.div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px' }}>
+             <StatCard label="Tổng giờ làm" value={`${stats.totalH}h`} color="#3b82f6" bgColor="#eff6ff" />
+             <StatCard label="Tổng công" value={stats.totalW} color="#10b981" bgColor="#ecfdf5" />
+             <StatCard label="Tăng ca" value={`${stats.totalOT}h`} color="#8b5cf6" bgColor="#f5f3ff" />
+             <StatCard label="Số lần đi trễ" value={`${stats.lateCounts}`} color="#ef4444" bgColor="#fef2f2" />
+             <StatCard label="Số lần về sớm" value={`${stats.earlyCounts}`} color="#eab308" bgColor="#fefce8" />
+             <StatCard label="Tổng phút trễ" value={`${stats.lateM}p`} color="#ef4444" bgColor="#fef2f2" />
+             <StatCard label="Tổng phút sớm" value={`${stats.earlyM}p`} color="#eab308" bgColor="#fefce8" />
+          </motion.div>
+          
+          {detailData.some(d => d.needApproval) && (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} style={{ background: '#fff7ed', border: '2px dashed #fed7aa', padding: '16px 20px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', color: '#9a3412', boxShadow: '0 4px 12px rgba(234,88,12,0.08)' }}>
+              <div style={{ background: '#ffedd5', padding: '12px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertCircle size={28} color="#ea580c" />
+              </div>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '4px' }}>Cảnh báo: Xét duyệt công làm ca sáng kéo dài!</div>
+                <div style={{ fontSize: '0.9rem' }}>Hệ thống phát hiện có <strong style={{ color: '#ea580c', fontSize: '1rem' }}>{detailData.filter(d => d.needApproval).length}</strong> ngày công nhân sự làm việc đến khung giờ 12:30. Yêu cầu kế toán để ý các dòng bôi vàng và nháy cờ phía dưới để chốt hợp lệ 0.5 công.</div>
+              </div>
+            </motion.div>
+          )}
+        </div>
       )}
 
       {/* Tables View */}
@@ -564,8 +665,13 @@ const Attendance = () => {
               </thead>
               <tbody>
                 {detailData.map(day => (
-                  <tr key={day.date} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#fcfdff'}>
-                    <td style={tdStyle}>{day.date.split('-').reverse().join('/')}</td>
+                  <tr key={day.date} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.2s', ...(day.needApproval ? { background: '#fefce8' } : {}) }} onMouseEnter={e => e.currentTarget.style.background = day.needApproval ? '#fefce8' : '#fcfdff'} onMouseLeave={e => e.currentTarget.style.background = day.needApproval ? '#fefce8' : 'transparent'}>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                         {day.needApproval && <AlertCircle size={14} color="#ea580c" />}
+                         {day.date.split('-').reverse().join('/')}
+                      </div>
+                    </td>
                     <td style={tdStyle}><span style={{ fontWeight: '600', color: day.dayOfWeek===0 ? '#ef4444' : '#64748b' }}>{day.dayName}</span></td>
                     <td style={tdStyle}>
                       <span style={{ fontWeight: '600', color: (day.checkIn === '--:--' && day.checkOut === '--:--') ? '#cbd5e1' : '#1e293b' }}>
@@ -581,9 +687,23 @@ const Attendance = () => {
                     </td>
                     <td style={tdStyle}>{day.workedHours > 0 ? `${day.workedHours}h` : '-'}</td>
                     <td style={tdStyle}><span style={{ fontWeight: '700', color: day.workDay > 0 ? '#4f46e5' : '#94a3b8' }}>{day.workDay > 0 ? day.workDay : '-'}</span></td>
-                    <td style={tdStyle}><StatusBadge status={day.status} /></td>
                     <td style={tdStyle}>
-                       <button onClick={(e) => { e.stopPropagation(); handleEdit(); }} style={{ ...actionBtnStyle, color: '#4f46e5' }}><Edit2 size={16} /></button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                        <StatusBadge status={day.status} />
+                        {day.needApproval && (
+                          <span style={{ fontSize: '0.65rem', color: '#ea580c', fontWeight: 'bold', background: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>Cần duyệt 0.5</span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={tdStyle}>
+                       {day.needApproval ? (
+                         <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <button onClick={(e) => { e.stopPropagation(); handleApprove(day.date, 'approved'); }} style={{ ...actionBtnStyle, background: '#ecfdf5', color: '#059669', width: 28, height: 28 }} title="Phê duyệt 0.5 công"><CheckCircle2 size={16} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleApprove(day.date, 'rejected'); }} style={{ ...actionBtnStyle, background: '#fef2f2', color: '#ef4444', width: 28, height: 28 }} title="Từ chối (Trả về giờ gốc)"><X size={16} /></button>
+                         </div>
+                       ) : (
+                         <button onClick={(e) => { e.stopPropagation(); handleEdit(); }} style={{ ...actionBtnStyle, color: '#4f46e5' }}><Edit2 size={16} /></button>
+                       )}
                     </td>
                   </tr>
                 ))}
@@ -595,7 +715,7 @@ const Attendance = () => {
       </div>
 
       <AnimatePresence>
-        {isCalendarOpen && <CalendarPopup data={detailData} month={fMonth} year={fYear} onClose={() => setIsCalendarOpen(false)} />}
+        {isCalendarOpen && <CalendarPopup data={detailData} month={fMonth} year={fYear} onClose={() => setIsCalendarOpen(false)} onApprove={handleApprove} />}
         {isAddOpen && <AddAttendanceDrawer onClose={() => setIsAddOpen(false)} onSave={() => {}} />}
         {isSecretOpen && <SecretKeyModal isOpen={isSecretOpen} onCancel={() => setIsSecretOpen(false)} onConfirm={(k) => { if(k==='123') setIsAddOpen(true); setIsSecretOpen(false); }} />}
       </AnimatePresence>

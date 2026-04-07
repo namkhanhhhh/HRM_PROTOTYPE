@@ -50,6 +50,76 @@ const AnimatedSelect = ({ value, onChange, options, icon, label, bg = 'white' })
   );
 };
 
+const calculateAttendance = (checkIn, checkOut) => {
+  if (!checkIn || !checkOut || checkIn === '--:--' || checkOut === '--:--') 
+     return { hours: 0, workDay: 0, late: 0, early: 0, ot: 0, status: 'Lỗi chấm công', needApproval: false };
+  
+  const parseTime = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const start = parseTime(checkIn);
+  const end = parseTime(checkOut);
+  
+  const stdStart = 510; // 08:30
+  const stdEnd = 1050; // 17:30
+  const lunchStart = 720; // 12:00
+  const lunchEnd = 780; // 13:00
+
+  const late = Math.max(0, start - stdStart);
+  const startEff = Math.max(start, stdStart);
+  
+  let morningMins = 0;
+  if (startEff < lunchStart) {
+    morningMins = Math.max(0, Math.min(end, lunchStart) - startEff);
+  }
+  
+  let afternoonMins = 0;
+  if (end > lunchEnd) {
+    afternoonMins = Math.max(0, end - Math.max(start, lunchEnd));
+  }
+  
+  const totalWorkedMins = morningMins + afternoonMins;
+  let hours = totalWorkedMins / 60;
+  let workDay = totalWorkedMins / 480;
+  let needApproval = false;
+  
+  if (totalWorkedMins >= 480) {
+    workDay = 1.0;
+  } else if (totalWorkedMins === 210 && startEff === 510 && end === 720) {
+    workDay = 0.45;
+  } else if (totalWorkedMins === 270 && startEff === 780 && end === 1050) {
+    workDay = 0.55;
+  }
+  
+  if (startEff <= 510 && end >= 750 && end <= 780 && afternoonMins === 0) {
+    if (morningMins >= 210) {
+      workDay = 0.5;
+      needApproval = true;
+    }
+  }
+  
+  const ot = Math.max(0, totalWorkedMins - 480) / 60;
+  const earlyMins = Math.max(0, stdEnd - end); 
+  
+  let status = 'Đủ công';
+  if (workDay >= 1) status = 'Đủ công';
+  else if (workDay >= 0.5 && !needApproval) status = 'Nửa ngày';
+  else if (workDay > 0) status = 'Thiếu công';
+  else status = 'Lỗi chấm công';
+  
+  return { 
+    hours: Number(hours.toFixed(1)), 
+    workDay: Number(workDay.toFixed(2)), 
+    late, 
+    early: earlyMins, 
+    ot: Number(ot.toFixed(1)), 
+    status, 
+    needApproval 
+  };
+};
+
 // --- MOCK DATA GENERATOR ---
 const generateMonthlyDetail = (year, month) => {
   const days = [];
@@ -66,19 +136,20 @@ const generateMonthlyDetail = (year, month) => {
       continue;
     }
 
-    let status = 'Đủ công';
-    let checkIn = '08:15';
+    let checkIn = '08:30';
     let checkOut = '17:30';
-    let workDay = 1.0;
-    let hours = 8;
-    let ot = 0;
-    let lateMins = 0;
 
-    if (i === 12) { status = 'Lỗi chấm công'; checkOut = '--:--'; workDay = 0; hours = 0; }
-    else if (i === 15) { status = 'Nghỉ có phép'; checkIn = '--:--'; checkOut = '--:--'; workDay = 0; hours = 0; }
-    else if (i === 22) { status = 'Đi muộn'; checkIn = '08:45'; lateMins = 15; workDay = 1; hours = 8; }
-    else if (i === 28) { status = 'Nghỉ không phép'; checkIn = '--:--'; checkOut = '--:--'; workDay = 0; hours = 0; }
-    else if (i % 5 === 0) { status = 'Đủ công'; checkOut = '19:30'; ot = 2; hours = 10; }
+    if (i === 12) { checkIn = '--:--'; checkOut = '--:--'; } // Lỗi
+    else if (i === 15) { checkIn = '--:--'; checkOut = '--:--'; } // Nghỉ có phép
+    else if (i === 22) { checkIn = '09:00'; checkOut = '17:30'; } // Muộn ko bù
+    else if (i === 28) { checkIn = '--:--'; checkOut = '--:--'; } // Nghỉ ko phép
+    else if (i % 5 === 0) { checkOut = '19:30'; } // Tăng ca
+    else if (i === 16) { checkIn = '08:30'; checkOut = '12:30'; } // Part time nửa ngày
+
+    const att = calculateAttendance(checkIn, checkOut);
+    let status = att.status;
+    if (i === 15) status = 'Nghỉ có phép';
+    if (i === 28) status = 'Nghỉ không phép';
 
     days.push({
       id: dateStr,
@@ -87,10 +158,11 @@ const generateMonthlyDetail = (year, month) => {
       status,
       checkIn,
       checkOut,
-      workDay,
-      hours,
-      ot,
-      lateMins,
+      workDay: (status === 'Nghỉ có phép' || status === 'Nghỉ không phép') ? 0 : att.workDay,
+      hours: att.hours,
+      ot: att.ot,
+      lateMins: att.late,
+      needApproval: att.needApproval,
       rawDate: d
     });
   }
@@ -119,7 +191,7 @@ export default function MyAttendance() {
     let res = monthData.days;
     if (filterStatus !== 'all') {
       res = res.filter(d => {
-        if (filterStatus === 'error') return ['Lỗi chấm công', 'Đi muộn', 'Nghỉ không phép'].includes(d.status);
+        if (filterStatus === 'error') return ['Lỗi chấm công', 'Thiếu công', 'Nghỉ không phép'].includes(d.status);
         if (filterStatus === 'leave') return ['Nghỉ có phép', 'Nửa ngày'].includes(d.status);
         if (filterStatus === 'ot') return d.ot > 0;
         return true;
@@ -152,10 +224,11 @@ export default function MyAttendance() {
   const StatusBadge = ({ status }) => {
     const cfg = {
       'Đủ công': { bg: '#ecfdf5', color: '#059669', dot: '#10b981' },
-      'Đi muộn': { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' }, 
+      'Thiếu công': { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' }, 
       'Lỗi chấm công': { bg: '#fef2f2', color: '#ef4444', dot: '#f87171' },
       'Nghỉ không phép': { bg: '#f1f5f9', color: '#475569', dot: '#94a3b8' },
       'Nghỉ có phép': { bg: '#fefce8', color: '#a16207', dot: '#eab308' },
+      'Nửa ngày': { bg: '#fefce8', color: '#a16207', dot: '#eab308' },
       'Cuối tuần': { bg: 'transparent', color: '#94a3b8', dot: 'transparent' },
     }[status] || { bg: '#f1f5f9', color: '#64748b', dot: '#94a3b8' };
   
@@ -258,10 +331,15 @@ export default function MyAttendance() {
               </thead>
               <tbody>
                 {filteredDays.map((d, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: d.status === 'Cuối tuần' ? '#f8fafc' : 'white' }}>
+                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: d.status === 'Cuối tuần' ? '#f8fafc' : (d.needApproval ? '#fefce8' : 'white') }}>
                     <td style={tdStyle}>
-                      <span style={{ fontWeight: '500', color: '#1e293b' }}>{d.date}</span>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b' }}>{d.dayName}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                         {d.needApproval && <AlertCircle size={14} color="#ea580c" />}
+                         <div>
+                            <span style={{ fontWeight: '500', color: '#1e293b' }}>{d.date}</span>
+                            <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b' }}>{d.dayName}</span>
+                         </div>
+                      </div>
                     </td>
                     <td style={tdStyle}>{d.checkIn}</td>
                     <td style={tdStyle}>{d.checkOut}</td>
@@ -274,7 +352,12 @@ export default function MyAttendance() {
                     </td>
                     <td style={tdStyle}>
                       {d.workDay > 0 ? (
-                        <span style={{ fontWeight: '500', color: '#16a34a' }}>{d.workDay} công</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                          <span style={{ fontWeight: '500', color: '#16a34a' }}>{d.workDay} công</span>
+                          {d.needApproval && (
+                            <span style={{ fontSize: '0.65rem', color: '#ea580c', fontWeight: 'bold', background: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>Cần duyệt 0.5</span>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ color: '#94a3b8' }}>0 công</span>
                       )}
@@ -406,7 +489,7 @@ function CalendarGrid({ days, onReport, year, month }) {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: '600', color: isWeekend ? '#94a3b8' : '#1e293b' }}>{cell.date.split('/')[0]}</span>
-                  {cell.workDay > 0 && <span style={{ fontSize: '0.7rem', background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '8px', fontWeight: '500' }}>{cell.workDay} công</span>}
+                  {cell.workDay > 0 && <span style={{ fontSize: '0.7rem', background: cell.needApproval ? '#ffedd5' : '#ecfdf5', color: cell.needApproval ? '#ea580c' : '#059669', padding: '2px 6px', borderRadius: '8px', fontWeight: '500' }}>{cell.workDay} công</span>}
                 </div>
                 
                 {!isWeekend && (

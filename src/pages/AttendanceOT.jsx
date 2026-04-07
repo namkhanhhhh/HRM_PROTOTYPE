@@ -29,10 +29,10 @@ const AttendanceOT = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', minWidth: 0 }}>
       
       {/* Top Stats */}
-      <div className="grid grid-cols-3 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
         <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #eef2f6', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#3b82f615', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Timer size={24} />
@@ -62,9 +62,9 @@ const AttendanceOT = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '24px', flex: 1, minHeight: 0 }}>
         {/* Left Chart */}
-        <div className="col-span-1" style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #eef2f6' }}>
+        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #eef2f6', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#0f172a', marginBottom: '1.5rem' }}>Phân bổ OT theo Phòng ban</h3>
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -80,7 +80,7 @@ const AttendanceOT = () => {
         </div>
 
         {/* Right Table */}
-        <div className="col-span-2" style={{ background: '#fff', borderRadius: '16px', border: '1px solid #eef2f6', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #eef2f6', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#0f172a' }}>Đối chiếu Đơn xin OT & Thực tế</h3>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
